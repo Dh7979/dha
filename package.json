@@ -1,0 +1,39 @@
+{
+    "name":  "app",
+    "version":  "1.0.0",
+    "description":  "",
+    "main":  "index.js",
+    "scripts":  {
+                    "build":  "vite build \u0026\u0026 node scripts/to-artifact.mjs",
+                    "dev":  "vite",
+                    "astryx":  "node node_modules/@astryxdesign/cli/clients/cli/bin/astryx.mjs",
+                    "build:web":  "vite build --mode web",
+                    "dev:web":  "vite --mode web"
+                },
+    "keywords":  [
+
+                 ],
+    "author":  "",
+    "license":  "ISC",
+    "dependencies":  {
+                         "@astryxdesign/cli":  "^0.7.15",
+                         "@astryxdesign/core":  "^0.7.15",
+                         "@astryxdesign/theme-neutral":  "^0.7.15",
+                         "@heroicons/react":  "^2.2.0",
+                         "@stylexjs/stylex":  "^0.19.2",
+                         "@supabase/supabase-js":  "^2.119.0",
+                         "react":  "^19.3.1",
+                         "react-dom":  "^19.3.1"
+                     },
+    "devDependencies":  {
+                            "@stylexjs/rollup-plugin":  "^0.19.2",
+                            "@types/react":  "^19.3.0",
+                            "@types/react-dom":  "^19.3.0",
+                            "@vitejs/plugin-react":  "^6.3.0",
+                            "typescript":  "^7.0.2",
+                            "vite":  "^8.3.8",
+                            "vite-plugin-pwa":  "^2.0.0",
+                            "vite-plugin-singlefile":  "^2.3.4"
+                        },
+    "type":  "module"
+}
