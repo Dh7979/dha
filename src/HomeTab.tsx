@@ -392,7 +392,7 @@ function Ddays({d, today}: {d: Dha; today: string}) {
         )}
       </StoreGate>
       <Sheet isOpen={open} onOpenChange={setOpen} title="D-day 추가" cta="등록하기" onSubmit={add}>
-        <TextInput label="이름" placeholder="예: 시험, 여행" value={name} onChange={setName} size="lg" />
+        <TextInput autoComplete="off" label="이름" placeholder="예: 시험, 여행…" value={name} onChange={setName} size="lg" />
         <DateInput label="날짜" value={date as never} onChange={(v) => setDate(v as string | undefined)} min={today as never} format="date_weekday" size="lg" />
       </Sheet>
     </Panel>
@@ -492,8 +492,8 @@ function CalendarSettings({sa}: {sa: StandaloneApi}) {
           />
         ))}
       </List>
-      <TextInput label="이름" placeholder="예: 내 캘린더" value={name} onChange={setName} />
-      <TextInput
+      <TextInput autoComplete="off" label="이름" placeholder="예: 내 캘린더…" value={name} onChange={setName} />
+      <TextInput autoComplete="off"
         label="iCal 비공개 주소"
         description="Google Calendar(PC) → 설정 → 내 캘린더 → 캘린더 통합 → ‘iCal 형식의 비공개 주소’"
         placeholder="https://calendar.google.com/calendar/ical/.../basic.ics"

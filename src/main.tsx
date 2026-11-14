@@ -21,6 +21,21 @@ function ThemeRoot({children}: {children: ReactNode}) {
     window.addEventListener(MODE_EVENT, on);
     return () => window.removeEventListener(MODE_EVENT, on);
   }, []);
+  // Status bar / browser chrome follows the chosen mode, not just the phone's setting.
+  useEffect(() => {
+    const mq = window.matchMedia('(prefers-color-scheme: dark)');
+    const apply = () => {
+      const dark = mode === 'dark' || (mode === 'system' && mq.matches);
+      document.documentElement.style.colorScheme = dark ? 'dark' : 'light';
+      document.querySelectorAll('meta[name="theme-color"]').forEach((m) => {
+        m.setAttribute('content', dark ? '#1C2530' : '#EEF2F5');
+        m.removeAttribute('media');
+      });
+    };
+    apply();
+    mq.addEventListener('change', apply);
+    return () => mq.removeEventListener('change', apply);
+  }, [mode]);
   return (
     <Theme theme={themes[defaultThemeSlug]} mode={mode}>
       {children}

@@ -11,7 +11,8 @@ import {neutralTheme} from '@astryxdesign/theme-neutral';
  *   PRIMARY (10%)   Winter blue #567594  main buttons, selected tab, progress, key numbers.
  *   TERTIARY        Pine   #5E8C84  sparing highlights (streak badges).
  *   INK             Slate navy #2E3A46 instead of black; soft ink #66727F.
- * Dark mode is a "winter night": #141A21 canvas with frosted blue #9DB8D3 actions.
+ * Dark mode is a "winter night": #1C2530 canvas with frosted blue #A9C6E2 actions.
+ * Elevation: borderless cards lifted by a soft, blue-tinted two-layer shadow (no hard lines).
  * (The theme keeps its old `sky` slug so existing imports keep working.)
  */
 const FROST = {canvas: '#EEF2F5', card: '#F8FAFB', line: '#DCE3E9', ink: '#2E3A46', inkSoft: '#66727F'};
@@ -38,7 +39,7 @@ export const skyTheme = defineTheme({
       weights: {1: 'bold', 2: 'bold', 3: 'bold'},
     },
   },
-  radius: {base: 4, multiplier: 2.5},
+  radius: {base: 4, multiplier: 2.25},
   motion: {tempo: 0.9, character: 'expressive'},
   tokens: {
     // 60% — key colour family (Frost)
@@ -72,12 +73,17 @@ export const skyTheme = defineTheme({
     // tertiary — Pine highlights (Token/Badge "orange" slot)
     '--color-background-orange': [PINE.bg, PINE.bgDark],
     '--color-text-orange': [PINE.ink, PINE.inkDark],
+    // Elevation — tinted with slate navy, never pure black, so it reads as cold light.
+    '--shadow-low': [
+      '0 1px 2px rgba(46, 58, 70, 0.05), 0 4px 14px -6px rgba(46, 58, 70, 0.10)',
+      '0 1px 2px rgba(0, 0, 0, 0.25), 0 6px 16px -8px rgba(0, 0, 0, 0.35)',
+    ],
     '--color-border-orange': [PINE.line, PINE.line],
     '--color-icon-orange': [PINE.line, PINE.inkDark],
   },
   components: {
     card: {
-      base: {borderWidth: '0'},
+      base: {borderWidth: '0', boxShadow: 'var(--shadow-low)'},
     },
     button: {
       base: {fontWeight: 'var(--font-weight-semibold)'},

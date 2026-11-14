@@ -68,9 +68,9 @@ function Today({d, today}: {d: Dha; today: string}) {
       <Text type="supporting" justify="center">
         {moodItem ? `오늘은 ‘${moodItem.l}’` : '이모지를 누르면 바로 저장돼요'}
       </Text>
-      <TextInput
+      <TextInput autoComplete="off"
         label="한 줄 일기"
-        placeholder="오늘을 한 줄로 남겨 보세요"
+        placeholder="오늘을 한 줄로 남겨 보세요…"
         value={text}
         size="lg"
         onChange={(v) => {

@@ -15,7 +15,7 @@ export default defineConfig(({mode}) =>
               html.replace(
                 '</head>',
                 '  <meta name="theme-color" content="#EEF2F5" media="(prefers-color-scheme: light)" />\n' +
-                  '    <meta name="theme-color" content="#141A21" media="(prefers-color-scheme: dark)" />\n' +
+                  '    <meta name="theme-color" content="#1C2530" media="(prefers-color-scheme: dark)" />\n' +
                   '    <meta name="apple-mobile-web-app-capable" content="yes" />\n' +
                   '    <meta name="apple-mobile-web-app-title" content="DHA" />\n' +
                   '    <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />\n' +

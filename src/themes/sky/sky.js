@@ -202,12 +202,12 @@ export const skyTheme = {
     "--color-icon-gray": "light-dark(#474747, #9e9e9e)",
     "--color-text-gray": "light-dark(#3E5163, #D3DEE8)",
     "--radius-none": "0px",
-    "--radius-inner": "10px",
-    "--radius-element": "20px",
-    "--radius-container": "30px",
-    "--radius-page": "70px",
+    "--radius-inner": "9px",
+    "--radius-element": "18px",
+    "--radius-container": "27px",
+    "--radius-page": "63px",
     "--radius-full": "9999px",
-    "--shadow-low": "0 2px 4px light-dark(oklch(0 0 0 / 5%), oklch(0 0 0 / 25%)), 0 4px 8px light-dark(oklch(0 0 0 / 10%), oklch(0 0 0 / 40%)), inset 0 0 0 1px light-dark(transparent, oklch(1 0 0 / 8%))",
+    "--shadow-low": "light-dark(0 1px 2px rgba(46, 58, 70, 0.05), 0 4px 14px -6px rgba(46, 58, 70, 0.10), 0 1px 2px rgba(0, 0, 0, 0.25), 0 6px 16px -8px rgba(0, 0, 0, 0.35))",
     "--shadow-med": "0 2px 4px light-dark(oklch(0 0 0 / 5%), oklch(0 0 0 / 35%)), 0 4px 12px light-dark(oklch(0 0 0 / 10%), oklch(0 0 0 / 50%)), inset 0 0 0 1px light-dark(transparent, oklch(1 0 0 / 12%))",
     "--shadow-high": "0 4px 6px light-dark(oklch(0 0 0 / 10%), oklch(0 0 0 / 50%)), 0 12px 24px light-dark(oklch(0 0 0 / 15%), oklch(0 0 0 / 70%)), inset 0 0 0 1px light-dark(transparent, oklch(1 0 0 / 15%))",
     "--shadow-inset-hover": "inset 0px 0px 0px 2px #0074e24D",
@@ -217,7 +217,7 @@ export const skyTheme = {
     "--shadow-inset-error": "inset 0px 0px 0px 2px #de47454D",
     "--color-background-inverted": "light-dark(#171C22, #F8FDFF)",
     "--color-track": "light-dark(#D5DEE6, #3F4D5B)",
-    "--radius-chat": "70px",
+    "--radius-chat": "63px",
     "--ease-entrance": "cubic-bezier(0.3, 1.2, 0.5, 1)",
     "--ease-move": "cubic-bezier(0.3, 1.2, 0.5, 1)"
   },
@@ -434,7 +434,8 @@ export const skyTheme = {
     "card": {
       "base": {
         "padding": "var(--spacing-3)",
-        "borderWidth": "0"
+        "borderWidth": "0",
+        "boxShadow": "var(--shadow-low)"
       }
     },
     "section": {
@@ -521,7 +522,7 @@ export const skyTheme = {
     },
     "radius": {
       "base": 4,
-      "multiplier": 2.5
+      "multiplier": 2.25
     },
     "motion": {
       "fast": 125,

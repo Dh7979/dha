@@ -75,7 +75,7 @@ export function HabitSheet({
   };
   return (
     <Sheet isOpen={open} onOpenChange={setOpen} title={initialName ? '루틴으로 옮기기' : '루틴 추가'} cta={initialName ? '루틴으로 옮기기' : '추가하기'} onSubmit={add}>
-      <TextInput label="매일 하고 싶은 일" placeholder="예: 스픽, 헬스, 물 2L" value={name} onChange={setName} size="lg" />
+      <TextInput autoComplete="off" label="매일 하고 싶은 일" placeholder="예: 스픽, 헬스, 물 2L…" value={name} onChange={setName} size="lg" />
       <VStack gap={2}>
         <Text type="label">언제 할까요?</Text>
         <SegmentedControl label="루틴 시간대" layout="fill" value={slot || 'any'} onChange={(v) => setSlot(v as Habit['slot'])}>
@@ -91,7 +91,7 @@ export function HabitSheet({
         </Text>
       </VStack>
       {timed ? (
-        <TextInput label="주간 목표 (분)" placeholder="예: 150" inputMode="numeric" value={goal} onChange={(v) => setGoal(digits(v))} description="비워 두면 합계만 보여줘요." />
+        <TextInput autoComplete="off" label="주간 목표 (분)" placeholder="예: 150…" inputMode="numeric" value={goal} onChange={(v) => setGoal(digits(v))} description="비워 두면 합계만 보여줘요." />
       ) : null}
     </Sheet>
   );
@@ -117,7 +117,7 @@ function MinutesSheet({open, setOpen, habit, onSave}: {open: boolean; setOpen: (
           <Button key={q} label={`${q}분`} variant={Number(min) === q ? 'primary' : 'secondary'} onClick={() => setMin(String(q))} />
         ))}
       </HStack>
-      <TextInput label="직접 입력 (분)" inputMode="numeric" placeholder="예: 25" value={min} onChange={(v) => setMin(digits(v))} size="lg" />
+      <TextInput autoComplete="off" label="직접 입력 (분)" inputMode="numeric" placeholder="예: 25…" value={min} onChange={(v) => setMin(digits(v))} size="lg" />
     </Sheet>
   );
 }

@@ -102,7 +102,7 @@ function ExpenseSheet({d, today, open, setOpen}: {d: Dha; today: string; open: b
           ))}
         </HStack>
       </VStack>
-      <TextInput label="메모 (선택)" placeholder="예: 점심, 택시" value={memo} onChange={setMemo} />
+      <TextInput autoComplete="off" label="메모 (선택)" placeholder="예: 점심, 택시…" value={memo} onChange={setMemo} />
     </Sheet>
   );
 }
@@ -119,16 +119,16 @@ function BudgetSheet({d, open, setOpen}: {d: Dha; open: boolean; setOpen: (o: bo
   };
   return (
     <Sheet isOpen={open} onOpenChange={setOpen} title="한 달 예산" cta="저장하기" onSubmit={save}>
-      <TextInput
+      <TextInput autoComplete="off"
         label="예산"
         isLabelHidden
         description="비워 두고 저장하면 예산 없이 합계만 보여줘요."
-        placeholder="예: 800,000원"
+        placeholder="예: 800,000원…"
         inputMode="numeric"
         size="lg"
         value={draft ? pretty(draft) + '원' : ''}
         onChange={(v) => setDraft(digits(v))}
-        hasAutoFocus
+       
       />
     </Sheet>
   );

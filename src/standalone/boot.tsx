@@ -103,7 +103,7 @@ function Login() {
               <SegmentedControlItem value="login" label="로그인" />
               <SegmentedControlItem value="signup" label="처음이에요" />
             </SegmentedControl>
-            <TextInput label="이메일" placeholder="you@example.com" type="email" autoComplete="email" inputMode="email" size="lg" value={email} onChange={setEmail} />
+            <TextInput label="이메일" placeholder="you@example.com" type="email" autoComplete="email" inputMode="email" autoCapitalize="none" hasAutoCorrect={false} hasSpellCheck={false} size="lg" value={email} onChange={setEmail} />
             <TextInput
               label="비밀번호"
               description={mode === 'signup' ? '8자 이상으로 만들어 주세요.' : undefined}

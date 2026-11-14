@@ -58,7 +58,7 @@ function TodoSheet({d, today, open, setOpen}: {d: Dha; today: string; open: bool
   };
   return (
     <Sheet isOpen={open} onOpenChange={setOpen} title="할 일 추가" cta="추가하기" onSubmit={add}>
-      <TextInput label="무엇을 할까요?" placeholder="예: 보고서 초안 쓰기" value={title} onChange={setTitle} size="lg" hasAutoFocus />
+      <TextInput autoComplete="off" label="무엇을 할까요?" placeholder="예: 보고서 초안 쓰기…" value={title} onChange={setTitle} size="lg" />
       {/* Three short choices fit a phone; the repeat cadence appears only when needed. */}
       <VStack gap={2}>
         <Text type="label">언제까지 / 얼마나 자주</Text>
