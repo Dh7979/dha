@@ -126,7 +126,8 @@ export function Sheet({
     if (!isOpen) setHint(null);
   }, [isOpen]);
   return (
-    <BottomSheet isOpen={isOpen} onOpenChange={onOpenChange} label={title} height="hug" purpose="form" padding={5}>
+    // purpose "info": tapping outside the sheet (or swiping it down) closes it.
+    <BottomSheet isOpen={isOpen} onOpenChange={onOpenChange} label={title} height="hug" purpose="info" padding={5}>
       <VStack gap={5}>
         <Heading level={2}>{title}</Heading>
         <VStack gap={4}>{children}</VStack>

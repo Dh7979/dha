@@ -153,13 +153,13 @@ function WeekStrip({items, end, today, selected, onSelect}: {items: Expense[]; e
             onClick={() => onSelect(on ? null : k)}
           >
             <VStack gap={0} hAlign="center">
-              <Text type="supporting" size="3xs">
+              <Text type="supporting" size="xs">
                 {DOW[dow(k)]}
               </Text>
               <Text weight={on || k === today ? 'bold' : 'medium'} hasTabularNumbers>
                 {Number(k.slice(8))}
               </Text>
-              <Text type="supporting" size="3xs" color={t ? 'primary' : 'secondary'} hasTabularNumbers maxLines={1}>
+              <Text type="supporting" size="2xs" color={t ? 'primary' : 'secondary'} hasTabularNumbers maxLines={1}>
                 {t ? short(t) : '·'}
               </Text>
             </VStack>

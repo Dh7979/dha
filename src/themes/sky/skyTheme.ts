@@ -15,9 +15,10 @@ import {neutralTheme} from '@astryxdesign/theme-neutral';
  * (The theme keeps its old `sky` slug so existing imports keep working.)
  */
 const FROST = {canvas: '#EEF2F5', card: '#F8FAFB', line: '#DCE3E9', ink: '#2E3A46', inkSoft: '#66727F'};
-const NIGHT = {canvas: '#141A21', card: '#1C242D', popover: '#222C36', line: '#2A3541', ink: '#E6ECF1', inkSoft: '#9AA8B5'};
-const ICE = {light: '#E1E8EE', dark: '#28333F', ink: '#3E5163', inkDark: '#C7D4E0'};
-const WINTER_BLUE = {light: '#567594', dark: '#9DB8D3', text: '#4A6884', on: '#FFFFFF', onDark: '#13202C'};
+// Dark mode lifted after on-device review: lighter slate surfaces, clearer card/canvas separation.
+const NIGHT = {canvas: '#1C2530', card: '#27323E', popover: '#2E3A47', line: '#384654', ink: '#EEF3F7', inkSoft: '#B0BDC9'};
+const ICE = {light: '#E1E8EE', dark: '#34424F', ink: '#3E5163', inkDark: '#D3DEE8'};
+const WINTER_BLUE = {light: '#567594', dark: '#A9C6E2', text: '#4A6884', on: '#FFFFFF', onDark: '#13202C'};
 const PINE = {bg: '#DCEAE7', bgDark: '#1F3330', ink: '#2F5C55', inkDark: '#A9D2CA', line: '#5E8C84'};
 
 export const skyTheme = defineTheme({
@@ -55,14 +56,14 @@ export const skyTheme = defineTheme({
     '--color-background-gray': [ICE.light, ICE.dark],
     '--color-text-gray': [ICE.ink, ICE.inkDark],
     '--color-border-gray': ['#9AAAB8', '#4E5D6B'],
-    '--color-track': ['#D5DEE6', '#33404D'],
+    '--color-track': ['#D5DEE6', '#3F4D5B'],
     // 10% — primary (Winter blue)
     '--color-accent': [WINTER_BLUE.light, WINTER_BLUE.dark],
     '--color-on-accent': [WINTER_BLUE.on, WINTER_BLUE.onDark],
     '--color-text-accent': [WINTER_BLUE.text, WINTER_BLUE.dark],
     '--color-icon-accent': [WINTER_BLUE.light, WINTER_BLUE.dark],
     '--color-accent-muted': ['#5675941F', '#9DB8D326'],
-    '--color-background-muted': ['#E3EBF2', '#1E2A36'],
+    '--color-background-muted': ['#E3EBF2', '#2A3848'],
     // "done" states use pine instead of a saturated green, so completion stays in the winter family
     '--color-success': ['#4F8077', '#7FB5AB'],
     '--color-success-muted': ['#4F807729', '#7FB5AB33'],

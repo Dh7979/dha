@@ -28,6 +28,15 @@ const TABS = [
   {k: 'money', l: '지출', icon: WalletIcon, on: WalletSolid},
 ];
 
+// Safe-area insets only in the installed app; the claude.ai Artifact frame already pads them.
+const STANDALONE = import.meta.env.MODE === 'web';
+// The page canvas paints the theme's body colour itself (the document behind it is unthemed).
+const SAFE_TOP = {
+  background: 'var(--color-background-body)',
+  ...(STANDALONE ? {paddingTop: 'env(safe-area-inset-top, 0px)'} : {}),
+};
+const SAFE_BOTTOM = STANDALONE ? {paddingBottom: 'max(env(safe-area-inset-bottom, 0px), 6px)'} : undefined;
+
 function readTab() {
   const h = location.hash.slice(1);
   if (TABS.some((t) => t.k === h)) return h;
@@ -74,7 +83,8 @@ export default function Page() {
   const used = () => setIntent(null);
 
   return (
-    <VStack height="100dvh">
+    // Installed app (viewport-fit=cover): keep content clear of the notch / status bar.
+    <VStack height="100dvh" style={SAFE_TOP}>
       <Layout
         height="fill"
         contentWidth={600}
@@ -91,11 +101,14 @@ export default function Page() {
         }
         footer={
           <LayoutFooter hasDivider padding={1} label="메뉴">
-            <TabList value={tab} onChange={(k) => go(k)} layout="fill" size="lg">
-              {TABS.map((t) => (
-                <Tab key={t.k} value={t.k} label={t.l} icon={<Icon icon={t.icon} />} selectedIcon={<Icon icon={t.on} />} />
-              ))}
-            </TabList>
+            {/* Lift the tab bar above the phone's home indicator / gesture bar. */}
+            <VStack style={SAFE_BOTTOM}>
+              <TabList value={tab} onChange={(k) => go(k)} layout="fill" size="lg">
+                {TABS.map((t) => (
+                  <Tab key={t.k} value={t.k} label={t.l} icon={<Icon icon={t.icon} />} selectedIcon={<Icon icon={t.on} />} />
+                ))}
+              </TabList>
+            </VStack>
           </LayoutFooter>
         }
       />

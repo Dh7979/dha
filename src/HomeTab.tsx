@@ -18,6 +18,8 @@ import {EmptyState} from '@astryxdesign/core/EmptyState';
 import {Switch} from '@astryxdesign/core/Switch';
 import {BottomSheet} from '@astryxdesign/core/BottomSheet';
 import {FileInput} from '@astryxdesign/core/FileInput';
+import {SegmentedControl, SegmentedControlItem} from '@astryxdesign/core/SegmentedControl';
+import {readMode, writeMode, type Mode} from './lib/mode';
 import {
   ArrowDownIcon,
   ArrowUpIcon,
@@ -399,6 +401,7 @@ function Ddays({d, today}: {d: Dha; today: string}) {
 
 // ---------- 홈 화면 설정 ----------
 function HomeSettings({open, setOpen, layout, setLayout}: {open: boolean; setOpen: (o: boolean) => void; layout: Layout; setLayout: (l: Layout) => void}) {
+  const [mode, setModeState] = useState<Mode>(readMode);
   const move = (k: string, dir: -1 | 1) => {
     const order = [...layout.order];
     const i = order.indexOf(k);
@@ -412,6 +415,14 @@ function HomeSettings({open, setOpen, layout, setLayout}: {open: boolean; setOpe
     <BottomSheet isOpen={open} onOpenChange={setOpen} label="홈 화면 설정" height="hug" padding={5}>
       <VStack gap={4}>
         <Heading level={2}>홈 화면 설정</Heading>
+        <VStack gap={2}>
+          <Text type="label">화면 밝기</Text>
+          <SegmentedControl label="화면 모드" layout="fill" value={mode} onChange={(v) => { setModeState(v as Mode); writeMode(v as Mode); }}>
+            <SegmentedControlItem value="light" label="밝게" />
+            <SegmentedControlItem value="dark" label="어둡게" />
+            <SegmentedControlItem value="system" label="기기 설정" />
+          </SegmentedControl>
+        </VStack>
         <Text type="supporting">보고 싶은 카드만 켜고, 화살표로 순서를 바꿔요.</Text>
         <List hasDividers edge="flush">
           {layout.order.map((k, i) => {

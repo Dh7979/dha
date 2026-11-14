@@ -29,6 +29,8 @@ function dueBadge(t: Todo, today: string) {
   return <Badge variant="neutral" label={`${shortDate(t.due)} 마감`} />;
 }
 
+const isRepeat = (w: string) => w === 'daily' || w === 'weekdays' || w === 'weekly';
+
 function TodoSheet({d, today, open, setOpen}: {d: Dha; today: string; open: boolean; setOpen: (o: boolean) => void}) {
   const notify = useNotify();
   const [title, setTitle] = useState('');
@@ -57,15 +59,26 @@ function TodoSheet({d, today, open, setOpen}: {d: Dha; today: string; open: bool
   return (
     <Sheet isOpen={open} onOpenChange={setOpen} title="할 일 추가" cta="추가하기" onSubmit={add}>
       <TextInput label="무엇을 할까요?" placeholder="예: 보고서 초안 쓰기" value={title} onChange={setTitle} size="lg" hasAutoFocus />
+      {/* Three short choices fit a phone; the repeat cadence appears only when needed. */}
       <VStack gap={2}>
         <Text type="label">언제까지 / 얼마나 자주</Text>
-        <SegmentedControl label="마감과 반복" layout="fill" value={when} onChange={setWhen}>
+        <SegmentedControl
+          label="마감과 반복"
+          layout="fill"
+          value={isRepeat(when) ? 'repeat' : when}
+          onChange={(v) => setWhen(v === 'repeat' ? 'daily' : v)}
+        >
           <SegmentedControlItem value="none" label="없음" />
           <SegmentedControlItem value="due" label="마감일" />
-          <SegmentedControlItem value="daily" label="매일" />
-          <SegmentedControlItem value="weekdays" label="평일" />
-          <SegmentedControlItem value="weekly" label={`매주 ${DOW[dow(today)]}`} />
+          <SegmentedControlItem value="repeat" label="반복" />
         </SegmentedControl>
+        {isRepeat(when) ? (
+          <SegmentedControl label="반복 주기" layout="fill" value={when} onChange={setWhen}>
+            <SegmentedControlItem value="daily" label="매일" />
+            <SegmentedControlItem value="weekdays" label="평일" />
+            <SegmentedControlItem value="weekly" label={`매주 ${DOW[dow(today)]}`} />
+          </SegmentedControl>
+        ) : null}
       </VStack>
       {when === 'due' ? (
         <DateInput label="마감일" value={due as never} onChange={(v) => setDue(v as string | undefined)} min={today as never} format="date_weekday" size="lg" />
