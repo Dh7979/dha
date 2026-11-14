@@ -16,7 +16,7 @@ import {ProgressBar} from '@astryxdesign/core/ProgressBar';
 import {ArrowPathIcon, ArrowPathRoundedSquareIcon, PlusIcon, XMarkIcon} from '@heroicons/react/24/outline';
 import {diffDays, DOW, dow, shortDate, uid} from './lib/dates';
 import {isDone, repeatDow, repeatsOn, type Todo} from './lib/useDha';
-import {Cta, Figure, Panel, Sheet, StoreGate, TabTitle, useNotify, type Dha} from './ui';
+import {Cta, Figure, haptic, Panel, Sheet, StoreGate, TabTitle, useNotify, type Dha} from './ui';
 import {HabitSheet, RoutinesPanel} from './Habits';
 
 const repeatLabel = (t: Todo) => (t.repeat === 'daily' ? '매일' : t.repeat === 'weekdays' ? '평일' : '매주 ' + DOW[repeatDow(t)]);
@@ -124,12 +124,20 @@ export function TodoTab({d, today, intent, onIntent}: {d: Dha; today: string; in
   );
   const left = list.filter((t) => !isDone(t, today)).length;
   const habitDone = d.habits.filter((h) => h.log?.[today]).length;
-  const toggle = (t: Todo) =>
+  const toggle = (t: Todo) => {
+    const finishing = !isDone(t, today);
     d.saveTodos(
       d.todos.map((x) =>
         x.id !== t.id ? x : x.repeat ? {...x, lastDone: x.lastDone === today ? null : today} : {...x, done: !x.done, doneDate: !x.done ? today : null},
       ),
     );
+    if (!finishing) return;
+    // The last open item of the day: a small celebration.
+    if (left === 1 && list.length > 1) {
+      haptic('success');
+      notify('오늘 할 일을 모두 끝냈어요 🎉');
+    } else haptic('tap');
+  };
 
   return (
     <VStack gap={3}>

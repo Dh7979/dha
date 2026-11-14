@@ -1,6 +1,6 @@
 // 홈: one "do this now" card, summary rows with inline actions, routine, schedule, news, D-day.
 // Card order and visibility are the viewer's own (홈 화면 설정).
-import {useState, type ReactNode} from 'react';
+import {useEffect, useState, type ReactNode} from 'react';
 import {VStack} from '@astryxdesign/core/VStack';
 import {HStack} from '@astryxdesign/core/HStack';
 import {Card} from '@astryxdesign/core/Card';
@@ -18,8 +18,9 @@ import {EmptyState} from '@astryxdesign/core/EmptyState';
 import {Switch} from '@astryxdesign/core/Switch';
 import {BottomSheet} from '@astryxdesign/core/BottomSheet';
 import {FileInput} from '@astryxdesign/core/FileInput';
+import {TimeInput} from '@astryxdesign/core/TimeInput';
 import {SegmentedControl, SegmentedControlItem} from '@astryxdesign/core/SegmentedControl';
-import {readMode, writeMode, type Mode} from './lib/mode';
+import {readMode, readScale, writeMode, writeScale, type Mode, type TextScale} from './lib/mode';
 import {
   ArrowDownIcon,
   ArrowUpIcon,
@@ -33,6 +34,7 @@ import {clock, diffDays, kstHour, longDate, shortDate, uid} from './lib/dates';
 import {currentSlot, hm, isDone, repeatsOn, sleepMinutes} from './lib/useDha';
 import {avgSleep} from './Sleep';
 import {NowRoutine} from './Habits';
+import {WeatherCard} from './Weather';
 import {Loading, Panel, Sheet, StoreGate, TabTitle, useNotify, type Dha} from './ui';
 import {todaySpent, won} from './Expenses';
 
@@ -51,6 +53,7 @@ const safeUrl = (u?: string) => (typeof u === 'string' && /^https?:\/\//i.test(u
 const CARDS = [
   {k: 'now', l: '지금 할 일'},
   {k: 'summary', l: '오늘 요약'},
+  {k: 'weather', l: '오늘 날씨'},
   {k: 'routine', l: '지금 루틴'},
   {k: 'schedule', l: '오늘 일정'},
   {k: 'news', l: '오늘의 뉴스'},
@@ -61,7 +64,11 @@ function loadLayout(): Layout {
   try {
     const v = JSON.parse(localStorage.getItem('dha-home-layout') || 'null');
     if (v && Array.isArray(v.order)) {
-      const order = [...v.order.filter((k: string) => CARDS.some((c) => c.k === k)), ...CARDS.map((c) => c.k).filter((k) => !v.order.includes(k))];
+      // New cards appear at their default position instead of at the very end.
+      const order: string[] = v.order.filter((k: string) => CARDS.some((c) => c.k === k));
+      CARDS.forEach((c, i) => {
+        if (!order.includes(c.k)) order.splice(Math.min(i, order.length), 0, c.k);
+      });
       return {order, hidden: Array.isArray(v.hidden) ? v.hidden : []};
     }
   } catch {
@@ -402,6 +409,7 @@ function Ddays({d, today}: {d: Dha; today: string}) {
 // ---------- 홈 화면 설정 ----------
 function HomeSettings({open, setOpen, layout, setLayout}: {open: boolean; setOpen: (o: boolean) => void; layout: Layout; setLayout: (l: Layout) => void}) {
   const [mode, setModeState] = useState<Mode>(readMode);
+  const [scale, setScaleState] = useState<TextScale>(readScale);
   const move = (k: string, dir: -1 | 1) => {
     const order = [...layout.order];
     const i = order.indexOf(k);
@@ -421,6 +429,15 @@ function HomeSettings({open, setOpen, layout, setLayout}: {open: boolean; setOpe
             <SegmentedControlItem value="light" label="밝게" />
             <SegmentedControlItem value="dark" label="어둡게" />
             <SegmentedControlItem value="system" label="기기 설정" />
+          </SegmentedControl>
+        </VStack>
+        <VStack gap={2}>
+          <Text type="label">글자 크기</Text>
+          <SegmentedControl label="글자 크기" layout="fill" value={scale} onChange={(v) => { setScaleState(v as TextScale); writeScale(v as TextScale); }}>
+            <SegmentedControlItem value="sm" label="작게" />
+            <SegmentedControlItem value="md" label="보통" />
+            <SegmentedControlItem value="lg" label="크게" />
+            <SegmentedControlItem value="xl" label="아주 크게" />
           </SegmentedControl>
         </VStack>
         <Text type="supporting">보고 싶은 카드만 켜고, 화살표로 순서를 바꿔요.</Text>
@@ -459,7 +476,162 @@ type StandaloneApi = {
   setPassword: (password: string) => Promise<void>;
   signOut: () => void;
   email?: string;
+  push: {
+    supported: () => boolean;
+    permission: () => string;
+    get: () => {subs: Array<{endpoint?: string}>; reminders: Record<string, Reminder>};
+    endpoint: () => Promise<string | null>;
+    enable: () => Promise<void>;
+    disable: () => Promise<void>;
+    saveReminders: (r: Record<string, Reminder>) => Promise<void>;
+    test: () => Promise<number>;
+  };
+  latestBackup: () => Promise<{created_at: string; data: Record<string, unknown>} | null>;
 };
+type Reminder = {on: boolean; time: string};
+const REMINDERS = [
+  {k: 'sleep', l: '수면 기록', d: '아직 수면을 안 남겼을 때', t: '08:30'},
+  {k: 'morning', l: '아침 루틴', d: '남은 아침 루틴이 있을 때', t: '09:00'},
+  {k: 'evening', l: '저녁 루틴', d: '남은 저녁 루틴이 있을 때', t: '21:00'},
+  {k: 'wrap', l: '하루 마무리', d: '오늘 기분을 안 남겼을 때', t: '22:00'},
+];
+
+/** Reminders: subscribe this device, then pick which ones and when. Sent only when something is left. */
+function NotificationSettings({sa}: {sa: StandaloneApi}) {
+  const notify = useNotify();
+  const [on, setOn] = useState<boolean | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [rem, setRem] = useState<Record<string, Reminder>>(() => sa.push.get().reminders);
+  const supported = sa.push.supported();
+  useEffect(() => {
+    if (!supported) return;
+    sa.push
+      .endpoint()
+      .then((ep) => setOn(!!ep && sa.push.get().subs.some((s) => s.endpoint === ep)))
+      .catch(() => setOn(false));
+  }, [sa, supported]);
+  const value = (k: string, t: string) => rem[k] || {on: true, time: t};
+  const change = (k: string, t: string, patch: Partial<Reminder>) => {
+    const next = {...rem, [k]: {...value(k, t), ...patch}};
+    setRem(next);
+    sa.push.saveReminders(next).catch(() => notify('저장하지 못했어요. 다시 시도해 주세요.'));
+  };
+  const toggle = async (want: boolean) => {
+    setBusy(true);
+    try {
+      if (want) {
+        await sa.push.enable();
+        setRem(sa.push.get().reminders);
+        notify('이 기기에서 알림을 켰어요');
+      } else {
+        await sa.push.disable();
+        notify('이 기기에서 알림을 껐어요');
+      }
+      setOn(want);
+    } catch (e) {
+      const code = (e as {code?: string})?.code;
+      notify(code === 'denied' ? '휴대폰 설정에서 DHA 알림을 허용해 주세요.' : '알림을 켜지 못했어요. 잠시 후 다시 시도해 주세요.');
+    } finally {
+      setBusy(false);
+    }
+  };
+  if (!supported)
+    return (
+      <VStack gap={1}>
+        <Heading level={4}>알림</Heading>
+        <Text type="supporting" size="sm">
+          홈 화면에 설치한 DHA 앱에서만 알림을 받을 수 있어요. 아이폰은 iOS 16.4 이상이 필요해요.
+        </Text>
+      </VStack>
+    );
+  return (
+    <VStack gap={2}>
+      <HStack gap={2} justify="between" vAlign="center">
+        <Heading level={4}>알림</Heading>
+        <Switch label="이 기기에서 알림 받기" isLabelHidden value={!!on} isDisabled={busy || on === null} onChange={toggle} />
+      </HStack>
+      <Text type="supporting" size="sm">
+        할 일이 남아 있을 때만 정한 시간에 알려드려요.
+      </Text>
+      {on ? (
+        <>
+          <List hasDividers edge="flush">
+            {REMINDERS.map((r) => {
+              const v = value(r.k, r.t);
+              return (
+                <ListItem
+                  key={r.k}
+                  startContent={<Switch label={`${r.l} 알림`} isLabelHidden value={v.on} onChange={(x) => change(r.k, r.t, {on: x})} />}
+                  label={<Text color={v.on ? 'primary' : 'secondary'}>{r.l}</Text>}
+                  description={r.d}
+                  endContent={
+                    <TimeInput label={`${r.l} 알림 시간`} isLabelHidden value={v.time as never} onChange={(x) => x && change(r.k, r.t, {time: x as string})} hourFormat="24h" increment={10} size="sm" />
+                  }
+                />
+              );
+            })}
+          </List>
+          <Button
+            label="테스트 알림 보내기"
+            variant="secondary"
+            width="100%"
+            clickAction={async () => {
+              try {
+                const n = await sa.push.test();
+                notify(n ? '테스트 알림을 보냈어요' : '알림 받을 기기가 없어요. 알림을 껐다 다시 켜 주세요.');
+              } catch {
+                notify('보내지 못했어요. 서버 알림 설정이 끝났는지 확인해 주세요.');
+              }
+            }}
+          />
+        </>
+      ) : null}
+    </VStack>
+  );
+}
+
+/** Weekly automatic backup kept on the server; download the latest as an importable file. */
+function BackupSettings({sa}: {sa: StandaloneApi}) {
+  const notify = useNotify();
+  const [last, setLast] = useState<string | null | undefined>(undefined);
+  useEffect(() => {
+    sa.latestBackup()
+      .then((b) => setLast(b ? b.created_at : null))
+      .catch(() => setLast(null));
+  }, [sa]);
+  const download = async () => {
+    try {
+      const b = await sa.latestBackup();
+      if (!b) return notify('아직 백업이 없어요. 매주 월요일 새벽에 자동으로 만들어져요.');
+      const day = b.created_at.slice(0, 10);
+      const file = new File([JSON.stringify({docs: b.data, backedUpAt: b.created_at}, null, 2)], `dha-backup-${day}.json`, {type: 'application/json'});
+      const nav = navigator as Navigator & {canShare?: (d: {files: File[]}) => boolean};
+      if (nav.canShare?.({files: [file]})) await navigator.share({files: [file], title: 'DHA 백업'});
+      else {
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(file);
+        a.download = file.name;
+        a.click();
+        setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+      }
+    } catch (e) {
+      if ((e as {name?: string})?.name !== 'AbortError') notify('백업을 내려받지 못했어요.');
+    }
+  };
+  return (
+    <VStack gap={2}>
+      <Heading level={4}>자동 백업</Heading>
+      <Text type="supporting" size="sm">
+        {last === undefined
+          ? '백업을 확인하는 중…'
+          : last
+            ? `매주 월요일 새벽 자동으로 백업해요. 마지막 백업 ${shortDate(last.slice(0, 10))} ${clock(last)}`
+            : '매주 월요일 새벽 자동으로 백업해요. 아직 만들어진 백업이 없어요.'}
+      </Text>
+      <Button label="최근 백업 내려받기" variant="secondary" width="100%" onClick={download} />
+    </VStack>
+  );
+}
 const ICAL_RE = /^https:\/\/calendar\.google\.com\/calendar\/ical\/.+\.ics$/;
 
 function CalendarSettings({sa}: {sa: StandaloneApi}) {
@@ -569,9 +741,11 @@ function AccountSection() {
   return (
     <VStack gap={3}>
       <Heading level={3}>계정과 데이터</Heading>
+      <NotificationSettings sa={sa} />
       <PasswordSettings sa={sa} />
       <CalendarSettings sa={sa} />
-      <FileInput label="데이터 가져오기" description="claude.ai 버전에서 내보낸 dha-export.json 파일을 고르세요." accept="application/json,.json" value={file} onChange={(f) => setFile(Array.isArray(f) ? f[0] || null : f)} changeAction={run} />
+      <BackupSettings sa={sa} />
+      <FileInput label="데이터 가져오기" description="claude.ai 버전에서 내보낸 dha-export.json 파일이나 백업 파일을 고르세요." accept="application/json,.json" value={file} onChange={(f) => setFile(Array.isArray(f) ? f[0] || null : f)} changeAction={run} />
       <Button label={`로그아웃${sa.email ? ` (${sa.email})` : ''}`} variant="secondary" width="100%" onClick={sa.signOut} />
     </VStack>
   );
@@ -589,6 +763,7 @@ export function HomeTab({d, today, go}: {d: Dha; today: string; go: Go}) {
   const render: Record<string, ReactNode> = {
     now: <NowCard key="now" d={d} today={today} go={go} />,
     summary: <Summary key="summary" d={d} today={today} go={go} />,
+    weather: <WeatherCard key="weather" />,
     routine: <NowRoutine key="routine" d={d} today={today} />,
     schedule: <Schedule key="schedule" d={d} />,
     news: <News key="news" d={d} today={today} />,

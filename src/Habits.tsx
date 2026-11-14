@@ -17,7 +17,7 @@ import {Heading} from '@astryxdesign/core/Heading';
 import {CheckIcon, PlusIcon, XMarkIcon, SunIcon, MoonIcon, ClockIcon} from '@heroicons/react/24/outline';
 import {addDays, kstHour, shortDate, uid} from './lib/dates';
 import {currentSlot, habitMinutes, hm, streak, type Habit} from './lib/useDha';
-import {Panel, Sheet, StoreGate, useNotify, type Dha} from './ui';
+import {Panel, Sheet, StoreGate, useNotify, type Dha, haptic} from './ui';
 
 const SLOTS = [
   {k: 'morning', l: '아침 루틴', icon: SunIcon},
@@ -140,10 +140,17 @@ export function HabitList({d, today, habits, canDelete = false}: {d: Dha; today:
     );
     return before;
   };
+  // Finishing the last routine of the day gets a small celebration instead of the plain toast.
+  const lastOne = (id: string) => d.habits.length > 1 && d.habits.every((h) => h.id === id || h.log?.[today]);
+  const done = (h: Habit, msg: string, before: Habit[]) => {
+    const all = lastOne(h.id);
+    haptic(all ? 'success' : 'tap');
+    notify(all ? '오늘 루틴을 모두 끝냈어요 🎉' : msg, () => d.saveHabits(before));
+  };
   const complete = (h: Habit) => {
     if (h.timed) return setTiming(h);
     const before = setLog(h.id, true);
-    notify(`‘${h.name}’ 완료했어요`, () => d.saveHabits(before));
+    done(h, `‘${h.name}’ 완료했어요`, before);
   };
   const undo = (h: Habit) => setLog(h.id, null);
   const remove = (h: Habit) => {
@@ -215,7 +222,7 @@ export function HabitList({d, today, habits, canDelete = false}: {d: Dha; today:
           habit={timing}
           onSave={(m) => {
             const before = setLog(timing.id, m);
-            notify(`‘${timing.name}’ ${fmtMin(m)} 기록했어요`, () => d.saveHabits(before));
+            done(timing, `‘${timing.name}’ ${fmtMin(m)} 기록했어요`, before);
           }}
         />
       ) : null}

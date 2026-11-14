@@ -5,7 +5,7 @@ import {createRoot} from 'react-dom/client';
 import {Theme} from '@astryxdesign/core/theme';
 import {themes, defaultThemeSlug} from '../astryx-themes';
 import TodayPage from './TodayPage';
-import {readMode, MODE_EVENT, type Mode} from './lib/mode';
+import {readMode, readScale, MODE_EVENT, SCALE_PCT, type Mode} from './lib/mode';
 
 // Two targets from one codebase:
 //  - default build: the claude.ai Artifact (runtime provided by claude.ai)
@@ -16,8 +16,15 @@ const Standalone = STANDALONE ? lazy(() => import('./standalone/boot').then((m) 
 /** Light / dark / follow-the-phone, chosen in 홈 화면 설정 (light by default). */
 function ThemeRoot({children}: {children: ReactNode}) {
   const [mode, setMode] = useState<Mode>(readMode);
+  const [scale, setScale] = useState(readScale);
   useEffect(() => {
-    const on = () => setMode(readMode());
+    document.documentElement.style.fontSize = SCALE_PCT[scale];
+  }, [scale]);
+  useEffect(() => {
+    const on = () => {
+      setMode(readMode());
+      setScale(readScale());
+    };
     window.addEventListener(MODE_EVENT, on);
     return () => window.removeEventListener(MODE_EVENT, on);
   }, []);

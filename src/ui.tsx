@@ -179,6 +179,15 @@ export function useNotify() {
   );
 }
 
+/** A short vibration where the phone supports it (Android); silently nothing elsewhere. */
+export function haptic(kind: 'tap' | 'success' = 'tap') {
+  try {
+    navigator.vibrate?.(kind === 'tap' ? 12 : [14, 60, 24]);
+  } catch {
+    /* not supported */
+  }
+}
+
 // ---- smart defaults kept per viewer in this browser ----
 export function remember<T>(key: string, value: T) {
   try {

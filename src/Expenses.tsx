@@ -18,6 +18,7 @@ import {SegmentedControl, SegmentedControlItem} from '@astryxdesign/core/Segment
 import {BackspaceIcon, ChevronLeftIcon, ChevronRightIcon, PlusIcon, XMarkIcon} from '@heroicons/react/24/outline';
 import {addDays, DOW, dow, shortDate, uid} from './lib/dates';
 import {monthOf, prevMonth, type Expense} from './lib/useDha';
+import {daysInMonth, type Fixed} from './lib/fixed';
 import {Cta, Panel, recall, remember, Sheet, StoreGate, TabTitle, useNotify, type Dha} from './ui';
 
 export const EXPENSE_CATS = [
@@ -38,10 +39,6 @@ const sum = (xs: Expense[]) => xs.reduce((s, x) => s + x.amount, 0);
 const QUICK = [1000, 5000, 10000, 50000];
 const KEYS = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '00', '0', 'del'];
 
-function daysInMonth(m: string) {
-  const [y, mo] = m.split('-').map(Number);
-  return new Date(Date.UTC(y, mo, 0)).getUTCDate();
-}
 const monthLabel = (m: string) => `${Number(m.slice(5))}월`;
 
 export function todaySpent(d: Dha, today: string) {
@@ -110,11 +107,17 @@ function ExpenseSheet({d, today, open, setOpen}: {d: Dha; today: string; open: b
 function BudgetSheet({d, open, setOpen}: {d: Dha; open: boolean; setOpen: (o: boolean) => void}) {
   const notify = useNotify();
   const [draft, setDraft] = useState(d.budget ? String(d.budget) : '');
+  const [cats, setCats] = useState<Record<string, string>>(() =>
+    Object.fromEntries(Object.entries(d.budgetDoc.cats || {}).map(([k, v]) => [k, String(v)])),
+  );
   const save = () => {
     const n = Number(draft);
-    const before = d.budget;
-    d.saveBudget(n > 0 ? n : null);
-    notify(n > 0 ? `한 달 예산을 ${won(n)}으로 정했어요` : '예산을 지웠어요', () => d.saveBudget(before));
+    const catBudgets = Object.fromEntries(Object.entries(cats).filter(([, v]) => Number(v) > 0).map(([k, v]) => [k, Number(v)]));
+    const sumCats = Object.values(catBudgets).reduce((a, b) => a + b, 0);
+    if (n > 0 && sumCats > n) return `항목별 예산의 합(${won(sumCats)})이 한 달 예산보다 커요.`;
+    const before = d.budgetDoc;
+    d.saveBudgetDoc({...before, monthly: n > 0 ? n : 0, cats: catBudgets});
+    notify(n > 0 ? `한 달 예산을 ${won(n)}으로 정했어요` : '예산을 저장했어요', () => d.saveBudgetDoc(before));
     setOpen(false);
   };
   return (
@@ -128,9 +131,112 @@ function BudgetSheet({d, open, setOpen}: {d: Dha; open: boolean; setOpen: (o: bo
         size="lg"
         value={draft ? pretty(draft) + '원' : ''}
         onChange={(v) => setDraft(digits(v))}
-       
       />
+      <VStack gap={2}>
+        <Text type="label">항목별 예산 (선택)</Text>
+        <Grid columns={2} gap={2}>
+          {EXPENSE_CATS.map((c) => (
+            <TextInput
+              key={c.k}
+              autoComplete="off"
+              label={`${c.e} ${c.l}`}
+              inputMode="numeric"
+              placeholder="없음"
+              value={cats[c.k] ? pretty(cats[c.k]) + '원' : ''}
+              onChange={(v) => setCats((x) => ({...x, [c.k]: digits(v)}))}
+            />
+          ))}
+        </Grid>
+      </VStack>
     </Sheet>
+  );
+}
+
+function FixedSheet({d, open, setOpen, today}: {d: Dha; open: boolean; setOpen: (o: boolean) => void; today: string}) {
+  const notify = useNotify();
+  const [name, setName] = useState('');
+  const [amount, setAmount] = useState('');
+  const [day, setDay] = useState('');
+  const [cat, setCat] = useState('living');
+  const add = () => {
+    if (!name.trim()) return '무엇에 나가는 돈인지 적어 주세요.';
+    if (!Number(amount)) return '금액을 입력해 주세요.';
+    const n = Number(day);
+    if (!(n >= 1 && n <= 31)) return '매달 나가는 날짜를 1~31 사이로 적어 주세요.';
+    if (!d.writable) return '저장소에 연결된 뒤에 등록할 수 있어요.';
+    const before = d.budgetDoc;
+    const f: Fixed = {id: uid(), name: name.trim(), amount: Number(amount), cat, day: n};
+    d.saveBudgetDoc({...before, fixed: [...(before.fixed || []), f]});
+    notify(n <= Number(today.slice(8)) ? `‘${f.name}’ 등록하고 이번 달 것도 기록했어요` : `‘${f.name}’ 등록했어요. 매달 ${n}일에 기록돼요`);
+    setName('');
+    setAmount('');
+    setDay('');
+    setOpen(false);
+  };
+  return (
+    <Sheet isOpen={open} onOpenChange={setOpen} title="고정 지출 추가" cta="등록하기" onSubmit={add}>
+      <TextInput autoComplete="off" label="이름" placeholder="예: 월세, 넷플릭스…" value={name} onChange={setName} size="lg" />
+      <HStack gap={2}>
+        <TextInput autoComplete="off" label="금액" inputMode="numeric" placeholder="예: 17,000원…" value={amount ? pretty(amount) + '원' : ''} onChange={(v) => setAmount(digits(v))} />
+        <TextInput autoComplete="off" label="매달 며칠" inputMode="numeric" placeholder="예: 25…" value={day} onChange={(v) => setDay(digits(v).slice(0, 2))} />
+      </HStack>
+      <VStack gap={2}>
+        <Text type="label">항목</Text>
+        <HStack gap={1} wrap="wrap">
+          {EXPENSE_CATS.map((c) => (
+            <Token key={c.k} size="lg" label={`${c.e} ${c.l}`} color={cat === c.k ? 'gray' : 'default'} onClick={() => setCat(c.k)} endContent={cat === c.k ? '✓' : undefined} />
+          ))}
+        </HStack>
+      </VStack>
+      <Text type="supporting" size="sm">
+        날짜가 되면 지출에 자동으로 기록돼요. 31일로 정하면 짧은 달에는 마지막 날에 기록돼요.
+      </Text>
+    </Sheet>
+  );
+}
+
+function FixedPanel({d, today}: {d: Dha; today: string}) {
+  const notify = useNotify();
+  const [open, setOpen] = useState(false);
+  const fixed = d.budgetDoc.fixed || [];
+  const remove = (f: Fixed) => {
+    const before = d.budgetDoc;
+    d.saveBudgetDoc({...before, fixed: fixed.filter((x) => x.id !== f.id)});
+    notify(`‘${f.name}’ 고정 지출을 지웠어요. 이미 기록된 내역은 그대로예요`, () => d.saveBudgetDoc(before));
+  };
+  return (
+    <Panel title="고정 지출" end={<Button label="추가" size="sm" variant="secondary" icon={<Icon icon={PlusIcon} />} onClick={() => setOpen(true)} />}>
+      {fixed.length ? (
+        <List hasDividers edge="flush">
+          {[...fixed]
+            .sort((a, b) => a.day - b.day)
+            .map((f) => (
+              <ListItem
+                key={f.id}
+                startContent={<Text type="large">{catOf(f.cat).e}</Text>}
+                label={f.name}
+                description={`매달 ${f.day}일 · ${catOf(f.cat).l}`}
+                endContent={
+                  <HStack gap={1} vAlign="center">
+                    <Text weight="semibold" hasTabularNumbers>
+                      {won(f.amount)}
+                    </Text>
+                    <IconButton label={`${f.name} 고정 지출 삭제`} icon={<Icon icon={XMarkIcon} />} variant="ghost" size="sm" onClick={() => remove(f)} />
+                  </HStack>
+                }
+              />
+            ))}
+        </List>
+      ) : (
+        <Text type="supporting">월세, 구독료처럼 매달 나가는 돈을 등록하면 그날 자동으로 기록돼요.</Text>
+      )}
+      {fixed.length ? (
+        <Text type="supporting" size="sm" hasTabularNumbers>
+          한 달 {won(fixed.reduce((a, f) => a + f.amount, 0))}
+        </Text>
+      ) : null}
+      <FixedSheet d={d} open={open} setOpen={setOpen} today={today} />
+    </Panel>
   );
 }
 
@@ -193,9 +299,11 @@ export function MoneyTab({d, today, intent, onIntent}: {d: Dha; today: string; i
   const dayOfMonth = Number(today.slice(8, 10));
   const prevSameSpan = sum((d.expenses[lastMonth] || []).filter((x) => Number(x.date.slice(8, 10)) <= dayOfMonth));
   const delta = total - prevSameSpan;
-  const byCat = EXPENSE_CATS.map((c) => ({...c, s: sum(items.filter((x) => x.cat === c.k))}))
-    .filter((c) => c.s > 0)
+  const catBudget = isCurrent ? d.budgetDoc.cats || {} : {};
+  const byCat = EXPENSE_CATS.map((c) => ({...c, s: sum(items.filter((x) => x.cat === c.k)), b: catBudget[c.k] || 0}))
+    .filter((c) => c.s > 0 || c.b > 0)
     .sort((a, b) => b.s - a.s);
+  const tight = byCat.filter((c) => c.b && c.s / c.b >= 0.8);
   const filtered = day ? items.filter((x) => x.date === day) : items;
   const groups = useMemo(() => {
     const m = new Map<string, Expense[]>();
@@ -212,8 +320,14 @@ export function MoneyTab({d, today, intent, onIntent}: {d: Dha; today: string; i
 
   const remove = (x: Expense) => {
     const before = d.expenses[month] || [];
+    const budgetBefore = d.budgetDoc;
     d.saveExpenses(month, before.filter((y) => y.id !== x.id));
-    notify(`${won(x.amount)} 내역을 지웠어요`, () => d.saveExpenses(month, before));
+    // A deleted fixed entry stays deleted for this month instead of being recorded again.
+    if (x.fixed) d.saveBudgetDoc({...budgetBefore, skip: [...(budgetBefore.skip || []), x.id]});
+    notify(`${won(x.amount)} 내역을 지웠어요`, () => {
+      d.saveExpenses(month, before);
+      if (x.fixed) d.saveBudgetDoc(budgetBefore);
+    });
   };
 
   return (
@@ -254,12 +368,19 @@ export function MoneyTab({d, today, intent, onIntent}: {d: Dha; today: string; i
               <Text type="supporting" size="sm" hasTabularNumbers>
                 {remaining > 0 ? `남은 ${daysLeft}일 동안 하루 ${won(Math.floor(remaining / daysLeft))}씩 쓸 수 있어요` : `예산 ${won(d.budget)}`}
               </Text>
+              {tight.length ? (
+                <Text color="accent" weight="medium" textWrap="pretty">
+                  {tight.map((c) => `${c.l} 예산 ${Math.round((c.s / c.b) * 100)}%`).join(' · ')} 사용했어요
+                </Text>
+              ) : null}
             </VStack>
           ) : (
             <Text type="supporting">한 달 예산을 정하면 남은 금액과 하루에 쓸 수 있는 금액을 알려드려요.</Text>
           )}
         </Panel>
       ) : null}
+
+      {isCurrent ? <FixedPanel d={d} today={today} /> : null}
 
       <Panel
         title={day ? `${shortDate(day)} 내역` : '내역'}
@@ -301,7 +422,7 @@ export function MoneyTab({d, today, intent, onIntent}: {d: Dha; today: string; i
                                     -{won(x.amount)}
                                   </Text>
                                 }
-                                description={x.memo ? `${x.memo} · ${c.l}` : c.l}
+                                description={[x.memo, c.l, x.fixed ? '고정 지출' : ''].filter(Boolean).join(' · ')}
                                 endContent={<IconButton label="지출 삭제" icon={<Icon icon={XMarkIcon} />} variant="ghost" size="sm" onClick={() => remove(x)} />}
                               />
                             );
@@ -327,10 +448,14 @@ export function MoneyTab({d, today, intent, onIntent}: {d: Dha; today: string; i
                       </HStack>
                       <HStack gap={2} vAlign="center">
                         <VStack width="100%">
-                          <ProgressBar label={`${c.l} 비중`} isLabelHidden value={c.s} max={total} />
+                          {c.b ? (
+                            <ProgressBar label={`${c.l} 예산 사용률`} isLabelHidden value={Math.min(c.s, c.b)} max={c.b} variant={c.s >= c.b ? 'error' : c.s / c.b >= 0.8 ? 'warning' : 'accent'} />
+                          ) : (
+                            <ProgressBar label={`${c.l} 비중`} isLabelHidden value={c.s} max={total || 1} />
+                          )}
                         </VStack>
                         <Text type="supporting" size="xsm" hasTabularNumbers>
-                          {Math.round((c.s / total) * 100)}%
+                          {c.b ? `${won(c.b)} 중` : `${total ? Math.round((c.s / total) * 100) : 0}%`}
                         </Text>
                       </HStack>
                     </VStack>

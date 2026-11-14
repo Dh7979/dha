@@ -8,6 +8,19 @@ export const DEFAULT_CALENDARS = [{name: '대한민국의 휴일', url: 'https:/
 /* eslint-disable @typescript-eslint/no-explicit-any */
 type Listener = () => void;
 
+export type Reminder = {on: boolean; time: string};
+export type PushDoc = {subs: Array<{endpoint?: string}>; reminders: Record<string, Reminder>};
+export const DEFAULT_REMINDERS: Record<string, Reminder> = {
+  sleep: {on: true, time: '08:30'},
+  morning: {on: true, time: '09:00'},
+  evening: {on: true, time: '21:00'},
+  wrap: {on: true, time: '22:00'},
+};
+const b64url = (s: string) => {
+  const raw = atob((s + '='.repeat((4 - (s.length % 4)) % 4)).replace(/-/g, '+').replace(/_/g, '/'));
+  return Uint8Array.from(raw, (c) => c.charCodeAt(0));
+};
+
 export function installShim(supabase: SupabaseClient, session: Session) {
   const uid = session.user.id;
   const cache = new Map<string, any>();
@@ -152,5 +165,53 @@ export function installShim(supabase: SupabaseClient, session: Session) {
     },
     signOut: () => supabase.auth.signOut().then(() => location.reload()),
     email: session.user.email,
+
+    // ---- reminders (Web Push) ----
+    push: {
+      supported: () => 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window,
+      permission: () => ('Notification' in window ? Notification.permission : 'denied'),
+      get: (): PushDoc => ({subs: [], reminders: {}, ...(cache.get('push') || {})}),
+      endpoint: async () => {
+        const reg = await navigator.serviceWorker.ready;
+        return (await reg.pushManager.getSubscription())?.endpoint || null;
+      },
+      enable: async () => {
+        if ((await Notification.requestPermission()) !== 'granted') throw {code: 'denied'};
+        const {data, error} = await supabase.functions.invoke('push-reminders', {body: {action: 'key'}});
+        if (error || !data?.key) throw {code: 'server'};
+        const reg = await navigator.serviceWorker.ready;
+        const sub = (await reg.pushManager.getSubscription()) || (await reg.pushManager.subscribe({userVisibleOnly: true, applicationServerKey: b64url(data.key)}));
+        const json = sub.toJSON();
+        await ready;
+        const cur: PushDoc = {subs: [], reminders: {}, ...(cache.get('push') || {})};
+        const reminders = Object.keys(cur.reminders).length ? cur.reminders : DEFAULT_REMINDERS;
+        await docRef('push').set({...cur, reminders, subs: [...cur.subs.filter((s) => s.endpoint !== json.endpoint), json]});
+      },
+      disable: async () => {
+        const reg = await navigator.serviceWorker.ready;
+        const sub = await reg.pushManager.getSubscription();
+        const cur: PushDoc = {subs: [], reminders: {}, ...(cache.get('push') || {})};
+        if (sub) {
+          await docRef('push').set({...cur, subs: cur.subs.filter((s) => s.endpoint !== sub.endpoint)});
+          await sub.unsubscribe().catch(() => {});
+        }
+      },
+      saveReminders: (reminders: PushDoc['reminders']) => {
+        const cur: PushDoc = {subs: [], reminders: {}, ...(cache.get('push') || {})};
+        return docRef('push').set({...cur, reminders});
+      },
+      test: async () => {
+        const {data, error} = await supabase.functions.invoke('push-reminders', {body: {action: 'test'}});
+        if (error) throw {code: 'server'};
+        return Number(data?.sent || 0);
+      },
+    },
+
+    // ---- weekly server backup (doc_backups table, filled by pg_cron) ----
+    latestBackup: async (): Promise<{created_at: string; data: Record<string, unknown>} | null> => {
+      const {data, error} = await supabase.from('doc_backups').select('created_at,data').order('created_at', {ascending: false}).limit(1).maybeSingle();
+      if (error) throw {code: 'not_ready', message: error.message};
+      return data;
+    },
   };
 }

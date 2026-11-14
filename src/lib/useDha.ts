@@ -2,6 +2,8 @@
 // Document shapes are unchanged from the pre-Astryx page so existing data keeps working.
 import {useCallback, useEffect, useMemo, useRef, useState} from 'react';
 import {addDays, dayKey, dow, TZ} from './dates';
+import {REFRESH_EVENT} from './refresh';
+import {dueFixed, pruneSkip, type BudgetDoc} from './fixed';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 declare global {
@@ -47,7 +49,7 @@ export type Journal = {date: string; mood: number | null; text: string; updatedA
 export type NewsItem = {title: string; summary?: string; source?: string; url?: string};
 export type News = {date: string; generatedAt?: number; categories: Record<string, NewsItem[]>};
 export type Summary = {text: string; createdAt: number; from?: string; to?: string};
-export type Expense = {id: string; date: string; amount: number; cat: string; memo?: string; createdAt: number};
+export type Expense = {id: string; date: string; amount: number; cat: string; memo?: string; createdAt: number; fixed?: boolean};
 export const monthOf = (k: string) => k.slice(0, 7);
 export const prevMonth = (m: string) => {
   const [y, mo] = m.split('-').map(Number);
@@ -135,7 +137,9 @@ export function useDha(today: string) {
   const [cal, setCal] = useState<CalState>({status: 'loading'});
   const [sampleFn, setSampleFn] = useState<any>(null);
   const [expenses, setExpenses] = useState<Record<string, Expense[]>>({});
-  const [budget, setBudget] = useState<number | null>(null);
+  const [budgetDoc, setBudgetDoc] = useState<BudgetDoc>({});
+  const [budgetLoaded, setBudgetLoaded] = useState(false);
+  const budget = budgetDoc.monthly && budgetDoc.monthly > 0 ? budgetDoc.monthly : null;
   const [expLoaded, setExpLoaded] = useState(false);
   const [sleep, setSleep] = useState<Record<string, Sleep>>({});
   const [sleepLoaded, setSleepLoaded] = useState(false);
@@ -203,7 +207,7 @@ export function useDha(today: string) {
           c
             .where('kind', '==', 'journal')
             .orderBy('date', 'desc')
-            .limit(10)
+            .limit(31)
             .onSnapshot((s: any) => {
               setJournal(s.docs.map((d: any) => d.data()));
               setLoaded((l) => ({...l, journal: true}));
@@ -226,10 +230,16 @@ export function useDha(today: string) {
           ),
           c.doc('budget').onSnapshot(
             (s: any) => {
-              const v = s.exists ? Number(s.data()?.monthly) : NaN;
-              setBudget(Number.isFinite(v) && v > 0 ? v : null);
+              const b = s.exists ? JSON.parse(JSON.stringify(s.data() || {})) : {};
+              setBudgetDoc({
+                monthly: Number(b.monthly) > 0 ? Number(b.monthly) : undefined,
+                cats: b.cats && typeof b.cats === 'object' ? b.cats : undefined,
+                fixed: Array.isArray(b.fixed) ? b.fixed : undefined,
+                skip: Array.isArray(b.skip) ? b.skip : undefined,
+              });
+              setBudgetLoaded(true);
             },
-            () => {},
+            () => setBudgetLoaded(true),
           ),
         ];
       })
@@ -367,7 +377,14 @@ export function useDha(today: string) {
       }
     });
   }, []);
-  useEffect(() => (mcpReady ? startCalendar() : undefined), [mcpReady, startCalendar]);
+  const [calRun, setCalRun] = useState(0);
+  useEffect(() => {
+    const again = () => setCalRun((n) => n + 1);
+    window.addEventListener(REFRESH_EVENT, again);
+    return () => window.removeEventListener(REFRESH_EVENT, again);
+  }, []);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => (mcpReady ? startCalendar() : undefined), [mcpReady, startCalendar, calRun]);
 
   const allowCalendar = useCallback(async () => {
     if (!mcp.current) return;
@@ -446,13 +463,28 @@ export function useDha(today: string) {
     },
     [enqueue],
   );
-  const saveBudget = useCallback(
-    (monthly: number | null) => {
-      setBudget(monthly);
-      return enqueue('budget', () => col.current.doc('budget').set({monthly: monthly || 0}));
+  const saveBudgetDoc = useCallback(
+    (next: BudgetDoc) => {
+      const clean: BudgetDoc = JSON.parse(JSON.stringify({...next, skip: pruneSkip(next.skip || [], [month, prevMonth(month)])}));
+      setBudgetDoc(clean);
+      return enqueue('budget', () => col.current.doc('budget').set({monthly: 0, ...clean}));
     },
-    [enqueue],
+    [enqueue, month],
   );
+  const saveBudget = useCallback((monthly: number | null) => saveBudgetDoc({...budgetDoc, monthly: monthly || 0}), [budgetDoc, saveBudgetDoc]);
+
+  // Fixed expenses are recorded on their day (once per month; the id keeps devices in step).
+  const fixedSig = useRef('');
+  useEffect(() => {
+    if (!writable || !expLoaded || !budgetLoaded || !budgetDoc.fixed?.length) return;
+    const items = expenses[month] || [];
+    const add = dueFixed(budgetDoc.fixed, month, today, items, budgetDoc.skip);
+    if (!add.length) return;
+    const sig = add.map((x) => x.id).join();
+    if (fixedSig.current === sig) return;
+    fixedSig.current = sig;
+    saveExpenses(month, [...items, ...add]);
+  }, [writable, expLoaded, budgetLoaded, budgetDoc, expenses, month, today, saveExpenses]);
   const saveSummary = useCallback(
     (s: Summary) => {
       setSummary(s);
@@ -484,14 +516,16 @@ export function useDha(today: string) {
       allowCalendar,
       expenses,
       budget,
+      budgetDoc,
       expLoaded,
       saveExpenses,
       saveBudget,
+      saveBudgetDoc,
       sleep,
       sleepLoaded,
       saveSleep,
     }),
-    [store, writable, loaded, todos, ddays, habits, journal, news, summary, cal, sampleFn, error, saveTodos, saveDdays, saveHabits, saveJournal, saveSummary, allowCalendar, expenses, budget, expLoaded, saveExpenses, saveBudget, sleep, sleepLoaded, saveSleep],
+    [store, writable, loaded, todos, ddays, habits, journal, news, summary, cal, sampleFn, error, saveTodos, saveDdays, saveHabits, saveJournal, saveSummary, allowCalendar, expenses, budget, budgetDoc, expLoaded, saveExpenses, saveBudget, saveBudgetDoc, sleep, sleepLoaded, saveSleep],
   );
 }
 

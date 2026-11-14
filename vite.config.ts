@@ -42,6 +42,7 @@ export default defineConfig(({mode}) =>
             },
             workbox: {
               navigateFallback: '/index.html',
+              importScripts: ['push-sw.js'],
               globPatterns: ['**/*.{js,css,html,png,svg,ico,webmanifest}'],
               maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
             },

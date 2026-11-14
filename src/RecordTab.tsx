@@ -13,6 +13,7 @@ import {habitMinutes, streak} from './lib/useDha';
 import {SleepCard, weekSleepLines} from './Sleep';
 import {FieldHint, Panel, StoreGate, TabTitle, useNotify, type Dha} from './ui';
 import {weekExpenseLines} from './Expenses';
+import {StatsPanel} from './Stats';
 
 export const MOODS = [
   {v: 1, e: '😣', l: '힘듦'},
@@ -241,6 +242,7 @@ export function RecordTab({d, today}: {d: Dha; today: string}) {
       <TabTitle title="기록" sub={streakDays ? `${streakDays}일째 기록하고 있어요` : '오늘의 기분부터 남겨 보세요'} />
       <SleepCard d={d} today={today} />
       <Today d={d} today={today} />
+      <StatsPanel d={d} today={today} />
       <Review d={d} today={today} />
       <History d={d} today={today} />
     </VStack>
