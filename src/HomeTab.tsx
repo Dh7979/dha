@@ -445,6 +445,7 @@ type StandaloneApi = {
   importDocs: (d: Record<string, unknown>) => Promise<number>;
   getCalendars: () => Cal[];
   saveCalendars: (items: Cal[]) => Promise<void>;
+  setPassword: (password: string) => Promise<void>;
   signOut: () => void;
   email?: string;
 };
@@ -498,6 +499,44 @@ function CalendarSettings({sa}: {sa: StandaloneApi}) {
   );
 }
 
+/** Set or change the sign-in password while signed in (no email needed). */
+function PasswordSettings({sa}: {sa: StandaloneApi}) {
+  const notify = useNotify();
+  const [pw, setPw] = useState('');
+  const [pw2, setPw2] = useState('');
+  const [hint, setHint] = useState<string | null>(null);
+  const save = async () => {
+    if (pw.length < 8) return setHint('비밀번호는 8자 이상이에요.');
+    if (pw !== pw2) return setHint('비밀번호 확인이 달라요.');
+    setHint(null);
+    try {
+      await sa.setPassword(pw);
+      setPw('');
+      setPw2('');
+      notify('비밀번호를 저장했어요. 다른 기기에서는 이메일과 이 비밀번호로 로그인하세요.');
+    } catch (e) {
+      const code = (e as {code?: string})?.code;
+      setHint(code === 'same_password' ? '지금 비밀번호와 같아요.' : code === 'weak_password' ? '비밀번호가 너무 쉬워요. 더 길게 만들어 주세요.' : '저장하지 못했어요. 다시 시도해 주세요.');
+    }
+  };
+  return (
+    <VStack gap={2}>
+      <Heading level={4}>로그인 비밀번호</Heading>
+      <Text type="supporting" size="sm">
+        비밀번호를 정하거나 바꿔요. 설치한 앱이나 다른 기기에서는 이메일과 이 비밀번호로 로그인해요.
+      </Text>
+      <TextInput label="새 비밀번호" type="password" autoComplete="new-password" value={pw} onChange={setPw} />
+      <TextInput label="새 비밀번호 확인" type="password" autoComplete="new-password" value={pw2} onChange={setPw2} onEnter={save} />
+      {hint ? (
+        <Text type="supporting" size="sm" color="primary">
+          {hint}
+        </Text>
+      ) : null}
+      <Button label="비밀번호 저장" variant="secondary" width="100%" onClick={save} />
+    </VStack>
+  );
+}
+
 function AccountSection() {
   const sa = (window as unknown as {__DHA_STANDALONE__?: StandaloneApi}).__DHA_STANDALONE__;
   const notify = useNotify();
@@ -519,6 +558,7 @@ function AccountSection() {
   return (
     <VStack gap={3}>
       <Heading level={3}>계정과 데이터</Heading>
+      <PasswordSettings sa={sa} />
       <CalendarSettings sa={sa} />
       <FileInput label="데이터 가져오기" description="claude.ai 버전에서 내보낸 dha-export.json 파일을 고르세요." accept="application/json,.json" value={file} onChange={(f) => setFile(Array.isArray(f) ? f[0] || null : f)} changeAction={run} />
       <Button label={`로그아웃${sa.email ? ` (${sa.email})` : ''}`} variant="secondary" width="100%" onClick={sa.signOut} />

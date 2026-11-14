@@ -146,6 +146,10 @@ export function installShim(supabase: SupabaseClient, session: Session) {
     },
     getCalendars: () => (Array.isArray(cache.get('calendars')?.items) ? cache.get('calendars').items : DEFAULT_CALENDARS),
     saveCalendars: (items: Array<{name: string; url: string}>) => docRef('calendars').set({items}),
+    setPassword: async (password: string) => {
+      const {error} = await supabase.auth.updateUser({password});
+      if (error) throw error;
+    },
     signOut: () => supabase.auth.signOut().then(() => location.reload()),
     email: session.user.email,
   };
