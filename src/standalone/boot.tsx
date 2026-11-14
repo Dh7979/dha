@@ -8,6 +8,7 @@ import {Heading} from '@astryxdesign/core/Heading';
 import {Text} from '@astryxdesign/core/Text';
 import {Button} from '@astryxdesign/core/Button';
 import {TextInput} from '@astryxdesign/core/TextInput';
+import {SegmentedControl, SegmentedControlItem} from '@astryxdesign/core/SegmentedControl';
 import {Spinner} from '@astryxdesign/core/Spinner';
 import {installShim} from './shim';
 
@@ -30,28 +31,29 @@ function Center({children}: {children: ReactNode}) {
 }
 
 function Login() {
-  // Email one-time code: the code is typed inside the app, so nothing leaves the installed PWA
-  // (a magic link would open Safari/Chrome instead of the installed app).
-  const [step, setStep] = useState<'email' | 'code'>('email');
+  // Email + password: signing in never sends an email or leaves the installed app.
+  // Requires "Confirm email" to be off in Supabase so sign-up logs in right away.
+  const [mode, setMode] = useState<'login' | 'signup'>('login');
   const [email, setEmail] = useState('');
-  const [code, setCode] = useState('');
+  const [password, setPassword] = useState('');
+  const [password2, setPassword2] = useState('');
   const [busy, setBusy] = useState(false);
   const [hint, setHint] = useState<string | null>(null);
-  const [cooldown, setCooldown] = useState(0);
-  useEffect(() => {
-    if (!cooldown) return;
-    const t = setTimeout(() => setCooldown((c) => c - 1), 1000);
-    return () => clearTimeout(t);
-  }, [cooldown]);
 
-  const explain = (c?: string, msg?: string) => {
-    switch (c) {
-      case 'over_email_send_rate_limit':
-        return '메일은 한 시간에 몇 통만 보낼 수 있어요. 이미 받은 메일이 있다면 가장 최근 메일의 코드를 입력하고, 없다면 잠시 뒤 다시 받아 주세요.';
+  const explain = (code?: string, msg?: string) => {
+    switch (code) {
+      case 'invalid_credentials':
+        return '이메일 또는 비밀번호가 맞지 않아요. 처음이라면 ‘처음이에요’에서 가입해 주세요.';
+      case 'user_already_exists':
+      case 'email_exists':
+        return '이미 가입된 이메일이에요. ‘로그인’에서 들어와 주세요.';
+      case 'weak_password':
+        return '비밀번호가 너무 쉬워요. 8자 이상으로 만들어 주세요.';
+      case 'email_not_confirmed':
+        return '이메일 확인이 켜져 있어 로그인할 수 없어요. Supabase에서 Confirm email을 꺼 주세요.';
       case 'over_request_rate_limit':
+      case 'over_email_send_rate_limit':
         return '시도가 너무 많아요. 몇 분 뒤 다시 해 주세요.';
-      case 'otp_expired':
-        return '코드가 만료됐거나 맞지 않아요. 가장 최근 메일의 코드를 입력하거나 새 코드를 받아 주세요.';
       case 'signup_disabled':
         return '새 계정 만들기가 꺼져 있어요. Supabase에서 가입 허용을 켜 주세요.';
       default:
@@ -59,33 +61,21 @@ function Login() {
     }
   };
 
-  const sendCode = async () => {
+  const submit = async () => {
     const e = email.trim();
     if (!/^\S+@\S+\.\S+$/.test(e)) return setHint('이메일 주소를 정확히 적어 주세요.');
+    if (password.length < 8) return setHint('비밀번호는 8자 이상이에요.');
+    if (mode === 'signup' && password !== password2) return setHint('비밀번호 확인이 달라요. 같은 비밀번호를 두 번 입력해 주세요.');
     setHint(null);
     setBusy(true);
-    const {error} = await supabase.auth.signInWithOtp({email: e, options: {shouldCreateUser: true}});
+    const {data, error} =
+      mode === 'login'
+        ? await supabase.auth.signInWithPassword({email: e, password})
+        : await supabase.auth.signUp({email: e, password});
     setBusy(false);
-    if (error) {
-      const c = (error as {code?: string}).code;
-      setHint(explain(c, error.message));
-      // A rate-limited send usually means an earlier code is already in the inbox: let them type it.
-      if (c === 'over_email_send_rate_limit') setStep('code');
-      return;
-    }
-    setStep('code');
-    setCode('');
-    setCooldown(60);
-  };
-
-  const verify = async () => {
-    const token = code.replace(/\D/g, '');
-    if (token.length < 6) return setHint('메일로 받은 숫자 코드를 모두 입력해 주세요.');
-    setHint(null);
-    setBusy(true);
-    const {error} = await supabase.auth.verifyOtp({email: email.trim(), token, type: 'email'});
-    setBusy(false);
-    if (error) setHint(explain((error as {code?: string}).code, error.message));
+    if (error) return setHint(explain((error as {code?: string}).code, error.message));
+    if (mode === 'signup' && !data.session)
+      setHint('가입은 됐지만 Supabase의 이메일 확인이 켜져 있어 아직 로그인할 수 없어요. Confirm email을 끄고 ‘로그인’에서 들어와 주세요.');
     // On success onAuthStateChange swaps this screen for the app.
   };
 
@@ -100,54 +90,43 @@ function Login() {
           <Text type="supporting">일정, 할 일, 루틴, 기록, 지출을 한곳에서 관리해요.</Text>
         </VStack>
         <Card padding={5}>
-          {step === 'email' ? (
-            <VStack gap={3}>
-              <TextInput label="이메일" placeholder="you@example.com" type="email" autoComplete="email" inputMode="email" size="lg" value={email} onChange={setEmail} onEnter={sendCode} />
-              {hint ? (
-                <Text type="supporting" size="sm" color="primary">
-                  {hint}
-                </Text>
-              ) : null}
-              <Button label="인증 코드 받기" variant="primary" size="lg" width="100%" isLoading={busy} onClick={sendCode} />
-              <Text type="supporting" size="sm" justify="center">
-                메일로 받은 숫자 코드를 앱에 입력하면 로그인돼요. 처음이면 자동으로 가입돼요.
+          <VStack gap={3}>
+            <SegmentedControl
+              label="로그인 또는 가입"
+              layout="fill"
+              value={mode}
+              onChange={(v) => {
+                setMode(v as 'login' | 'signup');
+                setHint(null);
+              }}
+            >
+              <SegmentedControlItem value="login" label="로그인" />
+              <SegmentedControlItem value="signup" label="처음이에요" />
+            </SegmentedControl>
+            <TextInput label="이메일" placeholder="you@example.com" type="email" autoComplete="email" inputMode="email" size="lg" value={email} onChange={setEmail} />
+            <TextInput
+              label="비밀번호"
+              description={mode === 'signup' ? '8자 이상으로 만들어 주세요.' : undefined}
+              type="password"
+              autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
+              size="lg"
+              value={password}
+              onChange={setPassword}
+              onEnter={mode === 'login' ? submit : undefined}
+            />
+            {mode === 'signup' ? (
+              <TextInput label="비밀번호 확인" type="password" autoComplete="new-password" size="lg" value={password2} onChange={setPassword2} onEnter={submit} />
+            ) : null}
+            {hint ? (
+              <Text type="supporting" size="sm" color="primary">
+                {hint}
               </Text>
-            </VStack>
-          ) : (
-            <VStack gap={3}>
-              <VStack gap={1}>
-                <Heading level={3}>인증 코드를 입력해 주세요</Heading>
-                <Text type="supporting" size="sm">
-                  {email}로 보낸 메일의 숫자 코드를 입력해요. 메일이 안 보이면 스팸함도 확인해 주세요.
-                </Text>
-              </VStack>
-              <TextInput
-                label="인증 코드"
-                placeholder="숫자 코드"
-                inputMode="numeric"
-                autoComplete="one-time-code"
-                size="lg"
-                value={code}
-                onChange={(v) => setCode(v.replace(/\D/g, '').slice(0, 10))}
-                onEnter={verify}
-                hasAutoFocus
-              />
-              {hint ? (
-                <Text type="supporting" size="sm" color="primary">
-                  {hint}
-                </Text>
-              ) : null}
-              <Button label="로그인" variant="primary" size="lg" width="100%" isLoading={busy} onClick={verify} />
-              <Button
-                label={cooldown ? `코드 다시 받기 (${cooldown}초)` : '코드 다시 받기'}
-                variant="secondary"
-                width="100%"
-                isDisabled={cooldown > 0 || busy}
-                onClick={sendCode}
-              />
-              <Button label="다른 이메일 쓰기" variant="ghost" width="100%" onClick={() => { setStep('email'); setHint(null); }} />
-            </VStack>
-          )}
+            ) : null}
+            <Button label={mode === 'login' ? '로그인' : '가입하고 시작하기'} variant="primary" size="lg" width="100%" isLoading={busy} onClick={submit} />
+            <Text type="supporting" size="sm" justify="center">
+              메일 없이 앱 안에서 바로 로그인돼요. 한 번 로그인하면 이 기기에서 계속 유지돼요.
+            </Text>
+          </VStack>
         </Card>
       </VStack>
     </Center>
