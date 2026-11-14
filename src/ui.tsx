@@ -65,7 +65,7 @@ export function Figure({label, value, tone = 'primary'}: {label: string; value: 
       <Text type="supporting" size="sm">
         {label}
       </Text>
-      <Text type="display-3" weight="bold" color={tone} hasTabularNumbers maxLines={1}>
+      <Text type="display-3" color={tone} hasTabularNumbers maxLines={1}>
         {value}
       </Text>
     </VStack>

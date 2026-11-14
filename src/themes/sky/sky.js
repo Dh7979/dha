@@ -32,22 +32,22 @@ export const skyTheme = {
     "--font-size-4xl": "2.5rem",
     "--font-size-5xl": "3rem",
     "--text-heading-1-size": "var(--font-size-2xl)",
-    "--text-heading-1-weight": "var(--font-weight-bold)",
+    "--text-heading-1-weight": "var(--font-weight-normal)",
     "--text-heading-1-leading": "1.4286",
     "--text-heading-2-size": "var(--font-size-xl)",
-    "--text-heading-2-weight": "var(--font-weight-bold)",
+    "--text-heading-2-weight": "var(--font-weight-normal)",
     "--text-heading-2-leading": "1.3913",
     "--text-heading-3-size": "var(--font-size-lg)",
-    "--text-heading-3-weight": "var(--font-weight-bold)",
+    "--text-heading-3-weight": "var(--font-weight-normal)",
     "--text-heading-3-leading": "1.4737",
     "--text-heading-4-size": "var(--font-size-base)",
-    "--text-heading-4-weight": "var(--font-weight-bold)",
+    "--text-heading-4-weight": "var(--font-weight-normal)",
     "--text-heading-4-leading": "1.5",
     "--text-heading-5-size": "var(--font-size-sm)",
-    "--text-heading-5-weight": "var(--font-weight-bold)",
+    "--text-heading-5-weight": "var(--font-weight-normal)",
     "--text-heading-5-leading": "1.5385",
     "--text-heading-6-size": "var(--font-size-xs)",
-    "--text-heading-6-weight": "var(--font-weight-bold)",
+    "--text-heading-6-weight": "var(--font-weight-normal)",
     "--text-heading-6-leading": "1.4545",
     "--text-body-size": "var(--font-size-base)",
     "--text-body-weight": "var(--font-weight-normal)",
@@ -92,8 +92,8 @@ export const skyTheme = {
     "--_astryx-pre-tempo-duration-slow": "700ms",
     "--_astryx-pre-tempo-duration-slow-max": "935ms",
     "--_astryx-motion-tempo": "0.9",
-    "--font-family-body": "\"IBM Plex Sans KR\", \"Apple SD Gothic Neo\", \"Malgun Gothic\", system-ui, sans-serif",
-    "--font-family-heading": "\"IBM Plex Sans KR\", \"Apple SD Gothic Neo\", \"Malgun Gothic\", system-ui, sans-serif",
+    "--font-family-body": "\"Gowun Dodum\", \"Apple SD Gothic Neo\", \"Malgun Gothic\", system-ui, sans-serif",
+    "--font-family-heading": "Jua, \"Gowun Dodum\", \"Apple SD Gothic Neo\", \"Malgun Gothic\", system-ui, sans-serif",
     "--font-family-code": "ui-monospace, \"SF Mono\", Monaco, Consolas, \"Liberation Mono\", \"Courier New\", monospace",
     "--color-syntax-keyword": "light-dark(#6b187c, #efa8ff)",
     "--color-syntax-string": "light-dark(#0b5615, #a4d6a3)",
@@ -494,18 +494,21 @@ export const skyTheme = {
         "ratio": 1.2
       },
       "body": {
-        "family": "IBM Plex Sans KR",
+        "family": "Gowun Dodum",
         "fallbacks": "\"Apple SD Gothic Neo\", \"Malgun Gothic\", system-ui, sans-serif"
       },
       "heading": {
-        "family": "IBM Plex Sans KR",
-        "fallbacks": "\"Apple SD Gothic Neo\", \"Malgun Gothic\", system-ui, sans-serif",
+        "family": "Jua",
+        "fallbacks": "\"Gowun Dodum\", \"Apple SD Gothic Neo\", \"Malgun Gothic\", system-ui, sans-serif",
         "weights": {
-          "1": "bold",
-          "2": "bold",
-          "3": "bold"
+          "1": "normal",
+          "2": "normal",
+          "3": "normal",
+          "4": "normal",
+          "5": "normal",
+          "6": "normal"
         },
-        "weight": "bold"
+        "weight": "normal"
       },
       "code": {
         "family": "ui-monospace",

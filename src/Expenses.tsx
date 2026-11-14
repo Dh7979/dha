@@ -76,7 +76,7 @@ function ExpenseSheet({d, today, open, setOpen}: {d: Dha; today: string; open: b
   return (
     <Sheet isOpen={open} onOpenChange={setOpen} title="얼마를 썼나요?" cta={amount ? `${pretty(amount)}원 기록하기` : '기록하기'} onSubmit={add}>
       <VStack gap={1}>
-        <Text type="display-2" weight="bold" color={amount ? 'primary' : 'secondary'} hasTabularNumbers justify="center">
+        <Text type="display-2" color={amount ? 'primary' : 'secondary'} hasTabularNumbers justify="center">
           {amount ? `${pretty(amount)}원` : '0원'}
         </Text>
         <HStack gap={1} justify="center" wrap="wrap">

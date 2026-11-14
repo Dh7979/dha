@@ -26,17 +26,20 @@ export const skyTheme = defineTheme({
   name: 'sky',
   extends: neutralTheme,
   color: {accent: [WINTER_BLUE.light, WINTER_BLUE.dark], neutralStyle: 'cool', contrast: 'standard'},
+  // Softer, freer type: Jua (round, friendly) for titles and big numbers,
+  // Gowun Dodum (brush-like but very readable) for everything else. Both ship one weight,
+  // so headings stay at 400 instead of a synthetic bold.
   typography: {
     scale: {base: 16, ratio: 1.2},
     body: {
-      family: 'IBM Plex Sans KR',
+      family: 'Gowun Dodum',
       fallbacks: '"Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif',
     },
     heading: {
-      family: 'IBM Plex Sans KR',
-      fallbacks: '"Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif',
-      weight: 'bold',
-      weights: {1: 'bold', 2: 'bold', 3: 'bold'},
+      family: 'Jua',
+      fallbacks: '"Gowun Dodum", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif',
+      weight: 'normal',
+      weights: {1: 'normal', 2: 'normal', 3: 'normal', 4: 'normal', 5: 'normal', 6: 'normal'},
     },
   },
   radius: {base: 4, multiplier: 2.25},
